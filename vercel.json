@@ -1,5 +1,5 @@
 {
-  "version": 22,
+  "version": 2,
   "functions": {
     "api/select-letter.js": { "runtime": "edge" }
   },
