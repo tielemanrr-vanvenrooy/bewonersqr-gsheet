@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="nl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Bewonersinformatie</title>
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; padding: 24px; background: #fff; color:#111; }
+      .card { max-width: 860px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 16px; padding: 20px; box-shadow: 0 6px 24px rgba(0,0,0,0.06); }
+      .muted { color:#666; font-size: 14px; }
+      .letter { background:#f8fafc; border-radius: 12px; padding: 16px; white-space: pre-wrap; line-height: 1.6; }
+      select, button { padding:10px 12px; border-radius: 12px; border:1px solid #e5e7eb; }
+      button { cursor:pointer; }
+      header { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;}
+      .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+      input[type='text'] { padding:10px 12px; border-radius: 12px; border:1px solid #e5e7eb; min-width: 260px; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <header>
+        <h1>Bewonersinformatie</h1>
+        <div class="row">
+          <label for="lang">Taal</label>
+          <select id="lang">
+            <option value="nl">Nederlands</option>
+            <option value="en">English</option>
+            <option value="pl">Polski</option>
+            <option value="tr">Türkçe</option>
+            <option value="ar">العربية</option>
+          </select>
+          <button id="loc">Toon mijn buurt</button>
+        </div>
+      </header>
+      <p class="muted">De taal wordt automatisch gekozen op basis van uw telefoon. U kunt deze hier aanpassen.</p>
+      <div class="row" style="margin:6px 0;">
+        <label for="sheet" class="muted">Sheet URL (GViz JSON, optioneel voor test)</label>
+        <input id="sheet" type="text" placeholder="https://docs.google.com/spreadsheets/d/<ID>/gviz/tq?tqx=out:json&sheet=content" />
+        <button id="applySheet">Gebruik Sheet</button>
+      </div>
+      <div>
+        <label for="area" class="muted">Kies uw buurt</label><br/>
+        <select id="area"></select>
+      </div>
+      <div class="letter" id="letter"></div>
+      <p class="muted" id="meta"></p>
+      <p class="muted">Privacy: geen tracking; locatie alleen met toestemming en niet opgeslagen.</p>
+    </div>
+    <script>
+      const params = new URLSearchParams(location.search);
+      const projectId = params.get('p') || 'molenstraat-soest';
+      const langSel = document.getElementById('lang');
+      const areaSel = document.getElementById('area');
+      const letterEl = document.getElementById('letter');
+      const metaEl = document.getElementById('meta');
+      const locBtn = document.getElementById('loc');
+      const sheetInput = document.getElementById('sheet');
+      const applySheetBtn = document.getElementById('applySheet');
+
+      function detectLang() {
+        const pref = (navigator.language || 'nl').toLowerCase();
+        return pref.startsWith('nl') ? 'nl' : pref.startsWith('en') ? 'en' : pref.startsWith('pl') ? 'pl' : pref.startsWith('tr') ? 'tr' : pref.startsWith('ar') ? 'ar' : 'nl';
+      }
+      langSel.value = detectLang();
+
+      let sheetUrlParam = params.get('sheet') || '';
+
+      async function fetchProject(lat=null, lng=null) {
+        const sheetArg = sheetUrlParam ? `&sheet=${encodeURIComponent(sheetUrlParam)}` : '';
+        const res = await fetch(`/api/select-letter?projectId=${projectId}&lang=${langSel.value}${lat!=null?`&lat=${lat}&lng=${lng}`:''}${sheetArg}`);
+        const data = await res.json();
+        areaSel.innerHTML = '';
+        data.areas.forEach(a => {
+          const opt = document.createElement('option');
+          opt.value = a.id;
+          opt.textContent = a.name;
+          areaSel.appendChild(opt);
+        });
+        areaSel.value = data.selectedAreaId || (data.areas[0] && data.areas[0].id);
+        render(data);
+      }
+
+      function render(data) {
+        const area = data.areas.find(a => a.id === areaSel.value) || data.areas[0];
+        letterEl.textContent = area.letter || '(Geen brieftekst beschikbaar)';
+        metaEl.textContent = `${data.projectTitle} • ${data.contactName} ${data.contactPhone} • Laatst bijgewerkt: ${data.updated}`;
+      }
+
+      areaSel.addEventListener('change', () => fetchProject());
+      langSel.addEventListener('change', () => fetchProject());
+      locBtn.addEventListener('click', () => {
+        if (!navigator.geolocation) return;
+        navigator.geolocation.getCurrentPosition(pos => {
+          fetchProject(pos.coords.latitude, pos.coords.longitude);
+        }, () => fetchProject());
+      });
+      applySheetBtn.addEventListener('click', () => {
+        sheetUrlParam = sheetInput.value.trim();
+        fetchProject();
+      });
+
+      fetchProject(); // initial
+    </script>
+  </body>
+</html>
