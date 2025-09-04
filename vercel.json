@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": now-php@1.0.0,
   "functions": {
     "api/select-letter.js": { "runtime": "edge" }
   },
