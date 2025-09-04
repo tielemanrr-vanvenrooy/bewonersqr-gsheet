@@ -1,8 +1,5 @@
 {
   "version": 2,
-  "functions": {
-    "api/select-letter.js": { "runtime": "edge" }
-  },
   "routes": [
     { "src": "/api/select-letter", "dest": "/api/select-letter.js" },
     { "src": "/(.*)", "dest": "/index.html" }
